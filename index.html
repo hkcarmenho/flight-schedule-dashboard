@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UA Flight Operations Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0a0e1a; color: #e2e8f0; min-height: 100vh; }
+  header { background: linear-gradient(135deg, #003087 0%, #0052cc 100%); padding: 18px 32px; display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #0066ff; }
+  header h1 { font-size: 1.4rem; font-weight: 700; color: #fff; }
+  header span { font-size: 0.85rem; color: #b3cfff; margin-left: auto; }
+  .main { max-width: 1200px; margin: 0 auto; padding: 28px 24px; }
+
+  /* Time panel */
+  .time-panel { background: #131929; border: 1px solid #1e2d4a; border-radius: 12px; padding: 22px 24px; margin-bottom: 28px; }
+  .section-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #5a7fb5; margin-bottom: 18px; }
+  .time-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .time-row { background: #0d1526; border: 1px solid #1e2d4a; border-radius: 10px; padding: 14px 18px; }
+  .time-row-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+  .start-row .time-row-label { color: #4ade80; }
+  .end-row .time-row-label { color: #a78bfa; }
+  .time-row-inputs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  input[type="date"], input[type="time"] {
+    background: #131929; border: 1px solid #2a3f66; border-radius: 7px;
+    color: #e2e8f0; padding: 7px 11px; font-size: 0.9rem; outline: none; cursor: pointer;
+    color-scheme: dark;
+  }
+  input[type="date"]:focus, input[type="time"]:focus { border-color: #0066ff; box-shadow: 0 0 0 2px rgba(0,102,255,.2); }
+  .time-display { font-size: 0.88rem; font-weight: 600; color: #8ba3c8; padding: 7px 0; }
+  .utc-badge { font-size: 0.65rem; font-weight: 600; background: #1e3a6e; color: #7eb6ff; padding: 2px 7px; border-radius: 4px; margin-left: 6px; }
+  .chicago-time { margin-top: 9px; font-size: 0.78rem; color: #8ba3c8; display: flex; align-items: center; gap: 6px; }
+  .chicago-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; background: #1a2e1a; color: #86efac; padding: 2px 6px; border-radius: 4px; }
+  .end-row .chicago-label { background: #1e1a30; color: #c4b5fd; }
+
+  /* Dual range slider */
+
+  .duration-badge { display: inline-flex; align-items: center; gap: 6px; background: #0d1a2e; border: 1px solid #1e3a6e; border-radius: 8px; padding: 6px 14px; font-size: 0.8rem; color: #60a5fa; margin-top: 14px; }
+
+  /* Cards */
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 28px; }
+  .card { border-radius: 12px; padding: 22px 24px; position: relative; overflow: hidden; }
+  .card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .card.airborne  { background: #0d1a2e; border: 1px solid #1a3a6e; }
+  .card.airborne::before  { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
+  .card.departing { background: #0d2318; border: 1px solid #1a5c2a; }
+  .card.departing::before { background: linear-gradient(90deg, #22c55e, #84cc16); }
+  .card.landing   { background: #1f0d24; border: 1px solid #4a1a5e; }
+  .card.landing::before   { background: linear-gradient(90deg, #a855f7, #ec4899); }
+  .card-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+  .card.airborne  .card-label { color: #60a5fa; }
+  .card.departing .card-label { color: #4ade80; }
+  .card.landing   .card-label { color: #c084fc; }
+  .card-num { font-size: 3rem; font-weight: 800; line-height: 1; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+  .card.airborne  .card-num { color: #eff6ff; }
+  .card.departing .card-num { color: #f0fdf4; }
+  .card.landing   .card-num { color: #fdf4ff; }
+  .card-sub { font-size: 0.75rem; color: #5a7fb5; line-height: 1.4; }
+
+  /* Table */
+  .region-panel { background: #131929; border: 1px solid #1e2d4a; border-radius: 12px; padding: 24px; margin-bottom: 28px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 10px 16px; font-size: 0.68rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #5a7fb5; border-bottom: 1px solid #1e2d4a; }
+  th.num { text-align: right; }
+  td { padding: 14px 16px; border-bottom: 1px solid #0f1825; font-size: 0.95rem; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .rname { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .pct-wrap { width: 70px; height: 5px; background: #1e2d4a; border-radius: 3px; display: inline-block; overflow: hidden; }
+  .pct-fill { height: 100%; border-radius: 3px; }
+  .total-row td { background: #0d1526; font-weight: 700; }
+
+  /* Chart */
+  .chart-panel { background: #131929; border: 1px solid #1e2d4a; border-radius: 12px; padding: 24px; }
+  .chart-legend { display: flex; gap: 20px; margin-bottom: 18px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: #8ba3c8; }
+  .legend-sw { width: 12px; height: 12px; border-radius: 2px; }
+
+
+  /* Hourly SVG charts */
+  .hourly-panel { background: #131929; border: 1px solid #1e2d4a; border-radius: 12px; padding: 24px; margin-top: 18px; }
+  .hourly-panel svg { width: 100%; overflow: visible; display: block; }
+  .hourly-panel .chart-legend { display: flex; gap: 18px; margin-bottom: 14px; }
+  .no-data-msg { color: #3a5070; font-size: 0.85rem; text-align: center; padding: 32px 0; }
+  /* Clickable SVG bars */
+  .chart-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 18px; }
+  .chart-header .section-title { margin-bottom: 0; }
+  .total-badge { font-size: 0.82rem; font-weight: 700; color: #e2e8f0; background: #1e2d4a; border-radius: 6px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
+  #hourlyDepChart rect, #hourlyArrChart rect { cursor: pointer; transition: opacity .12s; }
+  #hourlyDepChart rect:hover, #hourlyArrChart rect:hover { opacity: 0.72; }
+  /* Flight list modal */
+  #flightModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 9999; align-items: center; justify-content: center; padding: 20px; }
+  #flightModal.open { display: flex; }
+  .modal-box { background: #131929; border: 1px solid #1e2d4a; border-radius: 14px; width: 100%; max-width: 720px; max-height: 82vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.6); }
+  .modal-header { padding: 16px 20px; border-bottom: 1px solid #1e2d4a; display: flex; align-items: flex-start; gap: 12px; }
+  .modal-title { flex: 1; }
+  .modal-title h3 { font-size: 1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
+  .modal-title p { font-size: 0.76rem; color: #5a7fb5; }
+  .modal-close { background: none; border: none; color: #5a7fb5; font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 2px 6px; border-radius: 6px; flex-shrink: 0; }
+  .modal-close:hover { background: #1e2d4a; color: #e2e8f0; }
+  .modal-body { overflow-y: auto; padding: 16px 20px; }
+  .modal-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  .modal-table th { text-align: left; padding: 8px 12px; font-size: 0.67rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #5a7fb5; border-bottom: 1px solid #1e2d4a; position: sticky; top: 0; background: #131929; }
+  .modal-table th.r { text-align: right; }
+  .modal-table td { padding: 9px 12px; border-bottom: 1px solid #0f1825; vertical-align: middle; color: #d1ddf0; }
+  .modal-table tr:last-child td { border-bottom: none; }
+  .modal-table tr:hover td { background: #0d1526; }
+  .flight-num { font-weight: 700; color: #60a5fa; font-variant-numeric: tabular-nums; }
+  .route { color: #94a3b8; }
+  .arrow { color: #3a5070; margin: 0 4px; }
+  .time-utc { font-variant-numeric: tabular-nums; }
+  .time-chi { color: #86efac; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+  .reg-badge { font-size: 0.65rem; font-weight: 700; letter-spacing: .8px; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; }
+  .modal-count { font-size: 0.78rem; color: #5a7fb5; margin-top: 12px; text-align: right; }
+  @media(max-width:680px){
+    .time-rows { grid-template-columns: 1fr; }
+    .metrics { grid-template-columns: 1fr; }
+    .card-num { font-size: 2.4rem; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>&#9992; UA Flight Operations Dashboard</h1>
+  <span id="headerRange">All times UTC</span>
+</header>
+
+<div class="main">
+
+  <!-- ── Time Range Panel ───────────────────────────────── -->
+  <div class="time-panel">
+    <div class="section-title">Time Window</div>
+
+    <div class="time-rows">
+      <div class="time-row start-row">
+        <div class="time-row-label">&#9650; Start Time</div>
+        <div class="time-row-inputs">
+          <input type="date" id="startDate">
+          <input type="time" id="startTime" value="08:00">
+          <span class="utc-badge">UTC</span>
+        </div>
+        <div class="chicago-time"><span class="chicago-label">Chicago</span><span id="startChicago">&mdash;</span></div>
+      </div>
+      <div class="time-row end-row">
+        <div class="time-row-label">&#9660; End Time</div>
+        <div class="time-row-inputs">
+          <input type="date" id="endDate">
+          <input type="time" id="endTime" value="20:00">
+          <span class="utc-badge">UTC</span>
+        </div>
+        <div class="chicago-time"><span class="chicago-label">Chicago</span><span id="endChicago">&mdash;</span></div>
+      </div>
+    </div>
+
+
+    <div class="duration-badge" id="durationBadge">&#128336; Window: 12h 00m</div>
+  </div>
+
+  <!-- ── Metric Cards ──────────────────────────────────── -->
+  <div class="metrics">
+    <div class="card airborne">
+      <div class="card-label">&#9992; Peak Airborne</div>
+      <div class="card-num" id="totalAirborne">&mdash;</div>
+      <div class="card-sub">max simultaneous flights<br>in the air during window</div>
+    </div>
+    <div class="card departing">
+      <div class="card-label">&#8593; Departing</div>
+      <div class="card-num" id="totalDeparting">&mdash;</div>
+      <div class="card-sub">scheduled departures<br>within the time window</div>
+    </div>
+    <div class="card landing">
+      <div class="card-label">&#8595; Landing</div>
+      <div class="card-num" id="totalLanding">&mdash;</div>
+      <div class="card-sub">scheduled arrivals<br>within the time window</div>
+    </div>
+  </div>
+
+  <!-- ── Regional Table ───────────────────────────────── -->
+  <div class="region-panel">
+    <div class="section-title">Regional Breakdown</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Region</th>
+          <th class="num">Peak Airborne</th>
+          <th class="num">Departing</th>
+          <th class="num">Landing</th>
+          <th class="num">Fleet %</th>
+        </tr>
+      </thead>
+      <tbody id="regionTable"></tbody>
+    </table>
+  </div>
+
+
+  <!-- ── Hourly Departures ───────────────────────────────────── -->
+  <div class="hourly-panel">
+    <div class="chart-header"><div class="section-title">Hourly Departures</div><span class="total-badge" id="depTotalBadge"></span></div>
+    <div class="chart-legend">
+      <div class="legend-item"><div class="legend-sw" style="background:#3b82f6"></div>Domestic</div>
+      <div class="legend-item"><div class="legend-sw" style="background:#f59e0b"></div>Atlantic</div>
+      <div class="legend-item"><div class="legend-sw" style="background:#10b981"></div>Pacific</div>
+      <div class="legend-item"><div class="legend-sw" style="background:#f43f5e"></div>SOAM</div>
+    </div>
+    <div id="hourlyDepChart"></div>
+  </div>
+
+  <!-- ── Hourly Arrivals ──────────────────────────────────────── -->
+  <div class="hourly-panel">
+    <div class="chart-header"><div class="section-title">Hourly Arrivals</div><span class="total-badge" id="arrTotalBadge"></span></div>
+    <div class="chart-legend">
+      <div class="legend-item"><div class="legend-sw" style="background:#3b82f6"></div>Domestic</div>
+      <div class="legend-item"><div class="legend-sw" style="background:#f59e0b"></div>Atlantic</div>
+      <div class="legend-item"><div class="legend-sw" style="background:#10b981"></div>Pacific</div>
+      <div class="legend-item"><div class="legend-sw" style="background:#f43f5e"></div>SOAM</div>
+    </div>
+    <div id="hourlyArrChart"></div>
+  </div>
+
+</div>
+
+<script src="data.js"></script>
+<script>
+// ── Hourly chart ─────────────────────────────────────────────────
+const REG_BAR_COLORS = ["#3b82f6","#f59e0b","#10b981","#f43f5e"];
+const REG_BAR_DARK   = ["#1d4ed8","#b45309","#065f46","#9f1239"];
+
+function buildHourlyData(tS, tE) {
+  const hourS = Math.floor(tS / 3600) * 3600;
+  const hourE = Math.floor(tE / 3600) * 3600;
+  const buckets = [];
+  for (let h = hourS; h <= hourE; h += 3600) {
+    buckets.push({ t: h, dep: [0,0,0,0], arr: [0,0,0,0] });
+  }
+  if (buckets.length === 0) return buckets;
+  for (const f of FLIGHTS) {
+    const dH = Math.floor(f[0] / 3600) * 3600;
+    const aH = Math.floor(f[1] / 3600) * 3600;
+    const di = (dH - hourS) / 3600;
+    const ai = (aH - hourS) / 3600;
+    if (di >= 0 && di < buckets.length) buckets[di].dep[f[2]]++;
+    if (ai >= 0 && ai < buckets.length) buckets[ai].arr[f[2]]++;
+  }
+  return buckets;
+}
+
+function renderHourlySVG(buckets, field, containerId) {
+  const el = document.getElementById(containerId);
+  if (!buckets || buckets.length < 1) {
+    el.innerHTML = '<div class="no-data-msg">Select a valid time window to see data.</div>';
+    return;
+  }
+
+  const VW = 920, PAD = { t:18, r:20, b:52, l:44 };
+  const plotW = VW - PAD.l - PAD.r;
+  const plotH = 180;
+  const VH = plotH + PAD.t + PAD.b;
+
+  const n = buckets.length;
+  const totals = buckets.map(b => b[field].reduce((s,x)=>s+x,0));
+  const maxVal = Math.max(...totals, 1);
+
+  // Nice Y-axis ticks
+  const rawStep = maxVal / 4;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const niceMults = [1,2,5,10];
+  const step = niceMults.find(m => m * mag >= rawStep) * mag || rawStep;
+  const yMax = Math.ceil(maxVal / step) * step;
+  const yTickCount = Math.round(yMax / step);
+
+  const barGap = plotW / n;
+  const barW   = Math.max(1, barGap * 0.72);
+
+  // Label frequency based on number of bars
+  const labelFreq = n <= 12 ? 1 : n <= 24 ? 2 : n <= 48 ? 4 : n <= 72 ? 6 : 8;
+
+  let s = `<svg viewBox="0 0 ${VW} ${VH}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // Y gridlines + labels
+  for (let i = 0; i <= yTickCount; i++) {
+    const val = i * step;
+    const y = PAD.t + plotH - (val / yMax) * plotH;
+    s += `<line x1="${PAD.l}" y1="${y.toFixed(1)}" x2="${PAD.l+plotW}" y2="${y.toFixed(1)}" stroke="#1a2640" stroke-width="1"/>`;
+    s += `<text x="${PAD.l-6}" y="${(y+4).toFixed(1)}" text-anchor="end" fill="#4a6080" font-size="11" font-family="system-ui">${val.toLocaleString()}</text>`;
+  }
+
+  // Stacked bars + X labels
+  for (let i = 0; i < n; i++) {
+    const b = buckets[i];
+    const x = PAD.l + i * barGap + (barGap - barW) / 2;
+    let stackY = PAD.t + plotH;
+
+    for (let r = 3; r >= 0; r--) {
+      const v = b[field][r];
+      if (v === 0) continue;
+      const bh = (v / yMax) * plotH;
+      stackY -= bh;
+      s += `<rect x="${x.toFixed(1)}" y="${stackY.toFixed(1)}" width="${barW.toFixed(1)}" height="${bh.toFixed(1)}" fill="${REG_BAR_COLORS[r]}" rx="1.5" onclick="openFlightList(${b.t},${r},'${field}')">`;
+      s += `<title>${new Date(b.t*1000).toISOString().slice(0,16)}Z — ${["Domestic","Atlantic","Pacific","SOAM"][r]}: ${v} (click to list)</title></rect>`;
+    }
+
+    // Total label above bar
+    if (totals[i] > 0) {
+      const topY = PAD.t + plotH - (totals[i] / yMax) * plotH;
+      const lx = (x + barW / 2).toFixed(1);
+      // Show every bar if wide enough, otherwise match labelFreq
+      if (i % labelFreq === 0 || barW >= 18) {
+        s += `<text x="${lx}" y="${(topY - 3).toFixed(1)}" text-anchor="middle" fill="#94a3b8" font-size="9.5" font-family="system-ui" font-weight="600">${totals[i]}</text>`;
+      }
+    }
+
+    // X labels
+    if (i % labelFreq === 0) {
+      const iso = new Date(b.t * 1000).toISOString();
+      const lbl = n <= 24 ? iso.slice(11,16) : iso.slice(5,10)+" "+iso.slice(11,16);
+      const lx = (x + barW/2).toFixed(1);
+      const ly = PAD.t + plotH + 14;
+      s += `<text x="${lx}" y="${ly}" text-anchor="end" fill="#5a7fb5" font-size="10.5" font-family="system-ui" transform="rotate(-40 ${lx} ${ly})">${lbl}</text>`;
+    }
+  }
+
+  // Axes
+  s += `<line x1="${PAD.l}" y1="${PAD.t}" x2="${PAD.l}" y2="${PAD.t+plotH}" stroke="#2a3f66" stroke-width="1.5"/>`;
+  s += `<line x1="${PAD.l}" y1="${PAD.t+plotH}" x2="${PAD.l+plotW}" y2="${PAD.t+plotH}" stroke="#2a3f66" stroke-width="1.5"/>`;
+
+  s += '</svg>';
+
+  // Grand total badge
+  const grandTotal = totals.reduce((a, x) => a + x, 0);
+  const badgeId = containerId === 'hourlyDepChart' ? 'depTotalBadge' : 'arrTotalBadge';
+  const badgeEl = document.getElementById(badgeId);
+  if (badgeEl) badgeEl.textContent = grandTotal.toLocaleString() + ' total';
+
+  el.innerHTML = s;
+}
+
+function renderHourlyCharts(tS, tE) {
+  const buckets = buildHourlyData(tS, tE);
+  renderHourlySVG(buckets, 'dep', 'hourlyDepChart');
+  renderHourlySVG(buckets, 'arr', 'hourlyArrChart');
+}
+
+
+const REGIONS = [
+  { name:"Domestic", dot:"#60a5fa", bar:"#3b82f6" },
+  { name:"Atlantic", dot:"#fcd34d", bar:"#f59e0b" },
+  { name:"Pacific",  dot:"#34d399", bar:"#10b981" },
+  { name:"SOAM",     dot:"#fb7185", bar:"#f43f5e" },
+];
+
+// Data range computed dynamically from FLIGHTS
+const DATA_START = FLIGHTS.reduce((m, f) => Math.min(m, f[0]), Infinity);
+const DATA_END   = FLIGHTS.reduce((m, f) => Math.max(m, f[1]), -Infinity);
+const DATA_START_DATE = new Date(DATA_START * 1000).toISOString().slice(0, 10);
+const DATA_END_DATE   = new Date(DATA_END   * 1000).toISOString().slice(0, 10);
+
+// ── Stats calculation ─────────────────────────────────────────────
+function calcStats(tS, tE) {
+  if (tS >= tE) return null;
+
+  // Departing & Landing: simple window counts per region
+  const dep = REGIONS.map(()=>0);
+  const land = REGIONS.map(()=>0);
+  for (const f of FLIGHTS) {
+    if (f[0] >= tS && f[0] <= tE) dep[f[2]]++;
+    if (f[1] >= tS && f[1] <= tE) land[f[2]]++;
+  }
+
+  // Peak airborne: sample every 10 min across window, find max per region
+  const peakA = REGIONS.map(()=>0);
+  const stepSec = 600; // 10 minutes
+  const steps = Math.max(2, Math.ceil((tE - tS) / stepSec));
+  for (let i = 0; i <= steps; i++) {
+    const t = tS + (tE - tS) * i / steps;
+    const cur = REGIONS.map(()=>0);
+    for (const f of FLIGHTS) {
+      if (f[0] <= t && t <= f[1]) cur[f[2]]++;
+    }
+    for (let r = 0; r < REGIONS.length; r++) {
+      if (cur[r] > peakA[r]) peakA[r] = cur[r];
+    }
+  }
+
+  return { dep, land, peakA };
+}
+
+// ── Rendering ────────────────────────────────────────────────────
+const fmt = n => n.toLocaleString();
+
+function render(tS, tE) {
+  const stats = calcStats(tS, tE);
+  if (!stats) {
+    document.getElementById("totalAirborne").textContent = "—";
+    document.getElementById("totalDeparting").textContent = "—";
+    document.getElementById("totalLanding").textContent = "—";
+    document.getElementById("regionTable").innerHTML = "";
+    renderHourlyCharts(tS, tE);
+    return;
+  }
+  const { dep, land, peakA } = stats;
+  const totA = peakA.reduce((a,x)=>a+x, 0);
+  const totD = dep.reduce((a,x)=>a+x, 0);
+  const totL = land.reduce((a,x)=>a+x, 0);
+
+  document.getElementById("totalAirborne").textContent = fmt(totA);
+  document.getElementById("totalDeparting").textContent = fmt(totD);
+  document.getElementById("totalLanding").textContent = fmt(totL);
+
+  // Table
+  let tbl = "";
+  for (let i = 0; i < REGIONS.length; i++) {
+    const r = REGIONS[i];
+    const pct = totA > 0 ? Math.round(peakA[i] / totA * 100) : 0;
+    tbl += `<tr>
+      <td><div class="rname"><div class="dot" style="background:${r.dot}"></div>${r.name}</div></td>
+      <td class="num">${fmt(peakA[i])}</td>
+      <td class="num">${fmt(dep[i])}</td>
+      <td class="num">${fmt(land[i])}</td>
+      <td class="num"><div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
+        <span>${pct}%</span>
+        <div class="pct-wrap"><div class="pct-fill" style="width:${pct}%;background:${r.bar}"></div></div>
+      </div></td></tr>`;
+  }
+  tbl += `<tr class="total-row"><td>Total</td><td class="num">${fmt(totA)}</td><td class="num">${fmt(totD)}</td><td class="num">${fmt(totL)}</td><td class="num">100%</td></tr>`;
+  document.getElementById("regionTable").innerHTML = tbl;
+
+  // Bar chart
+  const maxVal = Math.max(totA, 1);
+  renderHourlyCharts(tS, tE);
+}
+
+// ── Slider & input sync ──────────────────────────────────────────
+
+function getStartUnix() {
+  const d = document.getElementById("startDate").value;
+  const t = document.getElementById("startTime").value;
+  if (!d || !t) return DATA_START;
+  return Math.floor(new Date(d + "T" + t + ":00Z").getTime() / 1000);
+}
+function getEndUnix() {
+  const d = document.getElementById("endDate").value;
+  const t = document.getElementById("endTime").value;
+  if (!d || !t) return DATA_END;
+  return Math.floor(new Date(d + "T" + t + ":00Z").getTime() / 1000);
+}
+
+function toChicagoStr(unixSec) {
+  return new Date(unixSec * 1000).toLocaleString('en-US', {
+    timeZone: 'America/Chicago',
+    month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+    timeZoneName: 'short'
+  });
+}
+
+function updateChicagoTimes(tS, tE) {
+  document.getElementById("startChicago").textContent = toChicagoStr(tS);
+  document.getElementById("endChicago").textContent   = toChicagoStr(tE);
+}
+
+function setDateTimeInputs(unixS, unixE) {
+  const isoS = new Date(unixS * 1000).toISOString();
+  const isoE = new Date(unixE * 1000).toISOString();
+  document.getElementById("startDate").value = isoS.slice(0,10);
+  document.getElementById("startTime").value = isoS.slice(11,16);
+  document.getElementById("endDate").value   = isoE.slice(0,10);
+  document.getElementById("endTime").value   = isoE.slice(11,16);
+  updateChicagoTimes(unixS, unixE);
+}
+
+
+function fmtDuration(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return (h > 0 ? h + "h " : "") + m.toString().padStart(2,"0") + "m";
+}
+
+function updateDuration(tS, tE) {
+  const diff = tE - tS;
+  document.getElementById("durationBadge").textContent =
+    "\u{1F556} Window: " + (diff > 0 ? fmtDuration(diff) : "invalid range");
+}
+
+let scheduled = null;
+function scheduleRender(tS, tE) {
+  if (scheduled) clearTimeout(scheduled);
+  scheduled = setTimeout(() => render(tS, tE), 80);
+}
+
+
+function onInputs() {
+  const tS = getStartUnix(), tE = getEndUnix();
+  updateDuration(tS, tE);
+  updateChicagoTimes(tS, tE);
+  scheduleRender(tS, tE);
+}
+
+["startDate","startTime","endDate","endTime"].forEach(id =>
+  document.getElementById(id).addEventListener("change", onInputs)
+);
+
+// ── Init ─────────────────────────────────────────────────────────
+(function() {
+  // Set date picker bounds from data range
+  ["startDate","endDate"].forEach(id => {
+    const el = document.getElementById(id);
+    el.min = DATA_START_DATE;
+    el.max = DATA_END_DATE;
+  });
+  // Default window: start of data to end of first day
+  const firstDayEnd = Math.min(DATA_START + 86400, DATA_END);
+  const isoS = new Date(DATA_START * 1000).toISOString();
+  const isoE = new Date(firstDayEnd * 1000).toISOString();
+  document.getElementById("startDate").value = isoS.slice(0,10);
+  document.getElementById("startTime").value = "00:00";
+  document.getElementById("endDate").value   = isoE.slice(0,10);
+  document.getElementById("endTime").value   = "23:59";
+
+  // Update header to show data date range
+  const hdrStart = new Date(DATA_START * 1000);
+  const hdrEnd   = new Date(DATA_END   * 1000);
+  const fmtDate  = d => d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric', timeZone:'UTC'});
+  document.getElementById("headerRange").textContent = fmtDate(hdrStart) + " – " + fmtDate(hdrEnd) + "  ·  All times UTC";
+
+  const tS = getStartUnix(), tE = getEndUnix();
+  updateDuration(tS, tE);
+  updateChicagoTimes(tS, tE);
+  render(tS, tE);
+})();
+// ── Flight list modal ─────────────────────────────────────────────
+const REG_NAMES  = ["Domestic","Atlantic","Pacific","SOAM"];
+const REG_COLORS_BADGE = [
+  {bg:"#1e3a6e",color:"#7eb6ff"},  // Domestic
+  {bg:"#3b2200",color:"#fcd34d"},  // Atlantic
+  {bg:"#003b2a",color:"#34d399"},  // Pacific
+  {bg:"#3b0a1a",color:"#fb7185"},  // SOAM
+];
+
+function openFlightList(hourUnix, regionIdx, field) {
+  const hourEnd = hourUnix + 3600;
+  const matches = FLIGHTS.filter(f => {
+    const t = field === 'dep' ? f[0] : f[1];
+    return t >= hourUnix && t < hourEnd && f[2] === regionIdx;
+  });
+  matches.sort((a, b) => (field === 'dep' ? a[0] - b[0] : a[1] - b[1]));
+
+  const iso  = new Date(hourUnix * 1000).toISOString();
+  const iso2 = new Date(hourEnd  * 1000).toISOString();
+  const chiStart = new Date(hourUnix*1000).toLocaleString('en-US',{timeZone:'America/Chicago',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
+  const chiEnd   = new Date(hourEnd *1000).toLocaleString('en-US',{timeZone:'America/Chicago',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
+
+  const reg = REG_NAMES[regionIdx];
+  const badge = REG_COLORS_BADGE[regionIdx];
+  const typeLabel = field === 'dep' ? 'Departures' : 'Arrivals';
+
+  document.getElementById("modalTitle").innerHTML =
+    `${typeLabel} &mdash; <span style="font-size:.75rem;background:${badge.bg};color:${badge.color};padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.8px;text-transform:uppercase">${reg}</span>`;
+  document.getElementById("modalSubtitle").textContent =
+    `${iso.slice(0,10)}  ${iso.slice(11,16)}–${iso2.slice(11,16)} UTC  ·  ${chiStart}–${chiEnd.split(' ')[0]} Chicago`;
+
+  let rows = "";
+  for (const f of matches) {
+    const t = field === 'dep' ? f[0] : f[1];
+    const tIso = new Date(t * 1000).toISOString();
+    const tChi = new Date(t * 1000).toLocaleString('en-US', {
+      timeZone: 'America/Chicago',
+      hour: '2-digit', minute: '2-digit', timeZoneName: 'short'
+    });
+    const rb = REG_COLORS_BADGE[f[2]];
+    rows += `<tr>
+      <td class="flight-num">UA ${f[3]}</td>
+      <td>${f[4]}</td>
+      <td>${f[5]}</td>
+      <td class="time-utc">${tIso.slice(11,16)} UTC</td>
+      <td class="time-chi">${tChi}</td>
+      <td><span class="reg-badge" style="background:${rb.bg};color:${rb.color}">${REG_NAMES[f[2]]}</span></td>
+    </tr>`;
+  }
+  document.getElementById("modalBody").innerHTML = rows || '<tr><td colspan="6" style="color:#3a5070;text-align:center;padding:20px">No flights found.</td></tr>';
+  document.getElementById("modalCount").textContent = matches.length + " flight" + (matches.length !== 1 ? "s" : "");
+
+  document.getElementById("flightModal").classList.add("open");
+}
+
+function closeModal() {
+  document.getElementById("flightModal").classList.remove("open");
+}
+
+// Close on backdrop click
+document.getElementById("flightModal").addEventListener("click", function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Close on Escape key
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape") closeModal();
+});
+
+</script>
+<!-- ── Flight List Modal ─────────────────────────── -->
+<div id="flightModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">
+        <h3 id="modalTitle">Flights</h3>
+        <p id="modalSubtitle"></p>
+      </div>
+      <button class="modal-close" onclick="closeModal()" title="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <table class="modal-table">
+        <thead>
+          <tr>
+            <th>Flight</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Time (UTC)</th>
+            <th>Chicago (CDT)</th>
+            <th>Region</th>
+          </tr>
+        </thead>
+        <tbody id="modalBody"></tbody>
+      </table>
+      <div class="modal-count" id="modalCount"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
