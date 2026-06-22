@@ -87,7 +87,7 @@
   .chart-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 18px; }
   .chart-header .section-title { margin-bottom: 0; }
   .total-badge { font-size: 0.82rem; font-weight: 700; color: #e2e8f0; background: #1e2d4a; border-radius: 6px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
-  #hourlyDepChart rect, #hourlyArrChart rect { cursor: pointer; transition: opacity .12s; }
+  #hourlyDepChart rect, #hourlyArrChart rect, #hourlyRelChart rect { cursor: pointer; transition: opacity .12s; }
   #hourlyDepChart rect:hover, #hourlyArrChart rect:hover { opacity: 0.72; }
   /* Flight list modal */
   #flightModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 9999; align-items: center; justify-content: center; padding: 20px; }
@@ -118,7 +118,41 @@
     .metrics { grid-template-columns: 1fr; }
     .card-num { font-size: 2.4rem; }
   }
+
+  /* FP Release detail table */
+  .rel-table-panel { background: #131929; border: 1px solid #1e2d4a; border-radius: 12px; padding: 24px; margin-top: 18px; }
+  .rel-table-top { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+  .rel-table-top .section-title { margin-bottom: 0; flex-shrink: 0; }
+  .rel-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .rfbtn { background: #0d1526; border: 1px solid #1e2d4a; border-radius: 6px; color: #5a7fb5; font-size: 0.73rem; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; padding: 5px 12px; cursor: pointer; transition: background .12s, border-color .12s, color .12s; }
+  .rfbtn:hover { border-color: #3b82f6; color: #7eb6ff; }
+  .rfbtn.active           { background: #0d1a2e; border-color: #3b82f6; color: #7eb6ff; }
+  .rfbtn.active[data-reg="0"] { background: #1e3a6e; border-color: #3b82f6; color: #7eb6ff; }
+  .rfbtn.active[data-reg="1"] { background: #3b2200; border-color: #f59e0b; color: #fcd34d; }
+  .rfbtn.active[data-reg="2"] { background: #003b2a; border-color: #10b981; color: #34d399; }
+  .rfbtn.active[data-reg="3"] { background: #3b0a1a; border-color: #f43f5e; color: #fb7185; }
+  .rel-count-badge { font-size: 0.82rem; font-weight: 700; color: #e2e8f0; background: #1e2d4a; border-radius: 6px; padding: 3px 10px; font-variant-numeric: tabular-nums; margin-left: auto; white-space: nowrap; }
+  .export-xlsx-btn { display:inline-flex; align-items:center; gap:5px; background:#065f46; color:#34d399; border:1px solid #34d399; border-radius:6px; padding:3px 12px; font-size:0.82rem; font-weight:600; cursor:pointer; white-space:nowrap; transition:background 0.15s; }
+  .export-xlsx-btn:hover { background:#047857; }
+  .rel-table-wrap { overflow-x: auto; }
+  .rel-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  .rel-table th { text-align: left; padding: 9px 14px; font-size: 0.66rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #5a7fb5; border-bottom: 1px solid #1e2d4a; white-space: nowrap; cursor: pointer; user-select: none; }
+  .rel-table th:hover { color: #7eb6ff; }
+  .rel-table th.r { text-align: right; }
+  .rel-table th.sort-asc::after  { content: " ↑"; color: #3b82f6; }
+  .rel-table th.sort-desc::after { content: " ↓"; color: #3b82f6; }
+  .rel-table td { padding: 9px 14px; border-bottom: 1px solid #0f1825; color: #c8d8f0; vertical-align: middle; white-space: nowrap; }
+  .rel-table tbody tr:hover td { background: #0d1526; }
+  .rel-table tbody tr:last-child td { border-bottom: none; }
+  .rel-table td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  .rel-table .rt-flight { font-weight: 700; color: #60a5fa; font-variant-numeric: tabular-nums; }
+  .rel-table .rt-iata { font-size: 0.72rem; color: #3a5070; margin-left: 4px; }
+  .rel-table .rt-utc { font-variant-numeric: tabular-nums; color: #c8d8f0; }
+  .rel-table .rt-chi { font-variant-numeric: tabular-nums; color: #a78bfa; font-size: 0.82rem; }
+  .rel-table .rt-mins { color: #fcd34d; font-weight: 600; font-variant-numeric: tabular-nums; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="data.js"></script>
 </head>
 <body>
 <header>
@@ -218,13 +252,111 @@
     <div id="hourlyArrChart"></div>
   </div>
 
+  <!-- ── Flight Plan Releases Due ─────────────────────────────── -->
+  <div class="hourly-panel">
+    <div class="chart-header"><div class="section-title">Flight Plan Releases Due</div><span class="total-badge" id="relTotalBadge"></span></div>
+    <div class="chart-legend">
+      <div class="legend-item"><div class="legend-sw" style="background:#3b82f6"></div>Domestic</div>
+      <div class="legend-item"><div class="legend-sw" style="background:#f59e0b"></div>Atlantic</div>
+      <div class="legend-item"><div class="legend-sw" style="background:#10b981"></div>Pacific</div>
+      <div class="legend-item"><div class="legend-sw" style="background:#f43f5e"></div>SOAM</div>
+    </div>
+    <div id="hourlyRelChart"></div>
+  </div>
+
+  <!-- ── FP Release Detail Table ───────────────────────────────── -->
+  <div class="rel-table-panel">
+    <div class="rel-table-top">
+      <div class="section-title">Flight Plan Releases — Detail</div>
+      <div class="rel-filters" id="relFilters">
+        <button class="rfbtn active" data-reg="-1">All</button>
+        <button class="rfbtn" data-reg="0">Domestic</button>
+        <button class="rfbtn" data-reg="1">Atlantic</button>
+        <button class="rfbtn" data-reg="2">Pacific</button>
+        <button class="rfbtn" data-reg="3">SOAM</button>
+      </div>
+      <span class="rel-count-badge" id="relTableCount"></span>
+      <button class="export-xlsx-btn" onclick="exportRelTableXLSX()" title="Export visible list to Excel">&#8659; Export .xlsx</button>
+    </div>
+    <div class="rel-table-wrap">
+      <table class="rel-table" id="relDetailTable">
+        <thead>
+          <tr>
+            <th data-col="flight">Flight</th>
+            <th data-col="icaoDep">From</th>
+            <th data-col="icaoArr">To</th>
+            <th data-col="relTime">Release Due (UTC)</th>
+            <th data-col="relTime">Release Due (Chicago)</th>
+            <th data-col="depTime">Sched Dep (UTC)</th>
+            <th data-col="mins" class="r">Min Before</th>
+            <th data-col="region">Region</th>
+          </tr>
+        </thead>
+        <tbody id="relTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 
-<script src="data.js"></script>
 <script>
 // ── Hourly chart ─────────────────────────────────────────────────
+
+const IATA_ICAO = {"ABQ":"KABQ","ACC":"DGAA","AGP":"LEMG","AKL":"NZAA","ALB":"KALB","AMS":"EHAM","ANC":"PANC","ATH":"LGAV","ATL":"KATL","ATW":"KATW","AUA":"TNCA","AUS":"KAUS","AVL":"KAVL","BCN":"LEBL","BDA":"TXKF","BDL":"KBDL","BER":"EDDB","BFL":"KBFL","BHM":"KBHM","BIL":"KBIL","BIO":"LEBB","BJX":"MMLO","BKK":"VTBS","BNA":"KBNA","BNE":"YBBN","BOG":"SKBO","BOI":"KBOI","BOS":"KBOS","BQN":"TJBQ","BRI":"LIBD","BRU":"EBBR","BTV":"KBTV","BUF":"KBUF","BUR":"KBUR","BWI":"KBWI","BZE":"MZBZ","BZN":"KBZN","CDG":"LFPG","CEB":"RPVM","CHS":"KCHS","CID":"KCID","CLE":"KCLE","CLT":"KCLT","CMH":"KCMH","COS":"KCOS","CPT":"FACT","CUN":"MMUN","CVG":"KCVG","CZM":"MMCZ","DAY":"KDAY","DBV":"LDDU","DCA":"KDCA","DEL":"VIDP","DEN":"KDEN","DFW":"KDFW","DRO":"KDRO","DSM":"KDSM","DTW":"KDTW","DUB":"EIDW","EDI":"EGPH","EGE":"KEGE","ELP":"KELP","EUG":"KEUG","EWR":"KEWR","EYW":"KEYW","EZE":"SAEZ","FAI":"PAFA","FAO":"LPFR","FAR":"KFAR","FAT":"KFAT","FCA":"KGPI","FCO":"LIRF","FLL":"KFLL","FNC":"LPMA","FRA":"EDDF","FSD":"KFSD","GCM":"MWCR","GDL":"MMGL","GEG":"KGEG","GEO":"SYCJ","GIG":"SBGL","GJT":"KGJT","GLA":"EGPF","GOH":"BGGH","GRR":"KGRR","GRU":"SBGR","GSP":"KGSP","GTF":"KGTF","GUA":"MGGT","GUM":"PGUM","GVA":"LSGG","HDN":"KHDN","HKG":"VHHH","HND":"RJTT","HNL":"PHNL","IAD":"KIAD","IAH":"KIAH","ICN":"RKSI","ICT":"KICT","IDA":"KIDA","IND":"KIND","JAC":"KJAC","JAX":"KJAX","JNB":"FAOR","KEF":"BIKF","KHH":"RCKH","KIX":"RJBB","KOA":"PHKO","KSA":"PTSA","KWA":"PKWA","LAS":"KLAS","LAX":"KLAX","LEX":"KLEX","LGA":"KLGA","LGB":"KLGB","LHR":"EGLL","LIH":"PHLI","LIM":"SPIM","LIR":"MRLB","LIS":"LPPT","LIT":"KLIT","LOS":"DNMM","MAD":"LEMD","MAF":"KMAF","MAJ":"PKMJ","MBJ":"MKJS","MCI":"KMCI","MCO":"KMCO","MDE":"SKRG","MDT":"KMDT","MDW":"KMDW","MEL":"YMML","MEM":"KMEM","MEX":"MMMX","MFE":"KMFE","MFR":"KMFR","MGA":"MNMG","MIA":"KMIA","MID":"MMMD","MKC":"KMKC","MKE":"KMKE","MNL":"RPLL","MRY":"KMRY","MSN":"KMSN","MSO":"KMSO","MSP":"KMSP","MSY":"KMSY","MTJ":"KMTJ","MTY":"MMMY","MUC":"EDDM","MXP":"LIMC","MYR":"KMYR","NAP":"LIRN","NAS":"MYNN","NCE":"LFMN","NGO":"RJGG","NRT":"RJAA","OGG":"PHOG","OKC":"KOKC","OMA":"KOMA","ONT":"KONT","OPO":"LPPR","ORD":"KORD","ORF":"KORF","PBI":"KPBI","PDL":"LPPD","PDX":"KPDX","PEK":"ZBAA","PHL":"KPHL","PHX":"KPHX","PIT":"KPIT","PLS":"MBPV","PMI":"LEPA","PMO":"LICJ","PNI":"PTPN","PNS":"KPNS","POS":"TTPP","PPT":"NTAA","PSC":"KPSC","PSP":"KPSP","PTY":"MPTO","PUJ":"MDPC","PVG":"ZSPD","PVR":"MMPR","PWM":"KPWM","QRO":"MMQT","RAP":"KRAP","RDM":"KRDM","RDU":"KRDU","RIC":"KRIC","RNO":"KRNO","ROC":"KROC","ROR":"PTRO","RSW":"KRSW","RTB":"MHRO","SAL":"MSLP","SAN":"KSAN","SAP":"MHLM","SAT":"KSAT","SAV":"KSAV","SBA":"KSBA","SBP":"KSBP","SCQ":"LEST","SDF":"KSDF","SDQ":"MDSD","SEA":"KSEA","SFO":"KSFO","SGN":"VVTS","SIN":"WSSS","SJC":"KSJC","SJD":"MMSD","SJO":"MROC","SJU":"TJSJ","SLC":"KSLC","SLP":"MMSP","SMF":"KSMF","SNA":"KSNA","SNN":"EINN","SPN":"PGSN","SPU":"LDSP","SRQ":"KSRQ","STI":"MDST","STL":"KSTL","STT":"TIST","SXM":"TNCM","SYD":"YSSY","SYR":"KSYR","TKK":"PTKK","TPA":"KTPA","TPE":"RCTP","TQO":"MMTL","TUL":"KTUL","TUS":"KTUS","TVC":"KTVC","TYS":"KTYS","UBN":"ZMCK","UIO":"SEQM","VCE":"LIPZ","VER":"MMVR","XNA":"KXNA","XPL":"MHSC","YAP":"PTYA","YEG":"CYEG","YOW":"CYOW","YUL":"CYUL","YVR":"CYVR","YYC":"CYYC","YYZ":"CYYZ","ZRH":"LSZH"};
+
+const FP_RULES = [
+  ["K___","K___",120],["K___","M___",120],["M___","K___",120],
+  ["K___","T___",120],["T___","K___",120],["K___","C___",120],
+  ["C___","K___",120],["K___","PH__",120],["PH__","K___",120],
+  ["K___","PA__",120],["PA__","K___",120],
+  ["K___","V___",240],["V___","K___",240],["E___","K___",240],
+  ["L___","K___",240],["O___","K___",240],["D___","K___",240],
+  ["K___","RK__",240],["RK__","K___",240],
+  ["____","____",180]
+];
+
+function _prefixMatch(icao, pat) {
+  for (let i = 0; i < 4; i++)
+    if (pat[i] !== '_' && pat[i] !== (icao[i] || '')) return false;
+  return true;
+}
+
+function getReleaseMinutes(icaoDep, icaoArr) {
+  if (!icaoDep || !icaoArr) return 180;
+  for (const [dp, ap, m] of FP_RULES)
+    if (_prefixMatch(icaoDep, dp) && _prefixMatch(icaoArr, ap)) return m;
+  return 180;
+}
+
+let FLIGHT_REL = [];
+function precomputeReleaseTimes() {
+  FLIGHT_REL = FLIGHTS.map(f => {
+    const icaoDep = IATA_ICAO[f[4]] || '';
+    const icaoArr = IATA_ICAO[f[5]] || '';
+    return f[0] - getReleaseMinutes(icaoDep, icaoArr) * 60;
+  });
+}
+
+function buildHourlyReleaseData(tS, tE) {
+  const hourS = Math.floor(tS / 3600) * 3600;
+  const hourE = Math.floor(tE / 3600) * 3600;
+  const buckets = [];
+  for (let h = hourS; h <= hourE; h += 3600)
+    buckets.push({ t: h, rel: [0,0,0,0] });
+  if (FLIGHT_REL.length === 0 || buckets.length === 0) return buckets;
+  for (let i = 0; i < FLIGHTS.length; i++) {
+    const rt = FLIGHT_REL[i];
+    const rh = Math.floor(rt / 3600) * 3600;
+    const idx = (rh - hourS) / 3600;
+    if (idx >= 0 && idx < buckets.length) buckets[idx].rel[FLIGHTS[i][2]]++;
+  }
+  return buckets;
+}
+
 const REG_BAR_COLORS = ["#3b82f6","#f59e0b","#10b981","#f43f5e"];
 const REG_BAR_DARK   = ["#1d4ed8","#b45309","#065f46","#9f1239"];
+const REG_NAMES = ["Domestic","Atlantic","Pacific","SOAM"];
+const REG_COLORS_BADGE = [{bg:"#1e3a6e",color:"#7eb6ff"},{bg:"#3b2200",color:"#fcd34d"},{bg:"#003b2a",color:"#34d399"},{bg:"#3b0a1a",color:"#fb7185"}];
 
 function buildHourlyData(tS, tE) {
   const hourS = Math.floor(tS / 3600) * 3600;
@@ -328,7 +460,7 @@ function renderHourlySVG(buckets, field, containerId) {
 
   // Grand total badge
   const grandTotal = totals.reduce((a, x) => a + x, 0);
-  const badgeId = containerId === 'hourlyDepChart' ? 'depTotalBadge' : 'arrTotalBadge';
+  const badgeId = containerId === 'hourlyDepChart' ? 'depTotalBadge' : containerId === 'hourlyRelChart' ? 'relTotalBadge' : 'arrTotalBadge';
   const badgeEl = document.getElementById(badgeId);
   if (badgeEl) badgeEl.textContent = grandTotal.toLocaleString() + ' total';
 
@@ -339,6 +471,8 @@ function renderHourlyCharts(tS, tE) {
   const buckets = buildHourlyData(tS, tE);
   renderHourlySVG(buckets, 'dep', 'hourlyDepChart');
   renderHourlySVG(buckets, 'arr', 'hourlyArrChart');
+  const relBuckets = buildHourlyReleaseData(tS, tE);
+  renderHourlySVG(relBuckets, 'rel', 'hourlyRelChart');
 }
 
 
@@ -428,6 +562,7 @@ function render(tS, tE) {
   // Bar chart
   const maxVal = Math.max(totA, 1);
   renderHourlyCharts(tS, tE);
+  renderRelTable(tS, tE);
 }
 
 // ── Slider & input sync ──────────────────────────────────────────
@@ -500,6 +635,160 @@ function onInputs() {
   document.getElementById(id).addEventListener("change", onInputs)
 );
 
+
+// ── FP Release detail table ──────────────────────────────────────
+let _relSortCol = 'relTime';
+let _relSortAsc = true;
+let _relRegFilter = -1;
+
+function renderRelTable(tS, tE) {
+  if (!FLIGHT_REL.length) return;
+  const rows = [];
+  for (let i = 0; i < FLIGHTS.length; i++) {
+    const rt = FLIGHT_REL[i];
+    if (rt >= tS && rt < tE) {
+      const f = FLIGHTS[i];
+      rows.push({
+        flight: f[3],
+        icaoDep: IATA_ICAO[f[4]] || f[4],
+        icaoArr: IATA_ICAO[f[5]] || f[5],
+        iataDepHint: f[4],
+        iataArrHint: f[5],
+        relTime: rt,
+        depTime: f[0],
+        mins: Math.round((f[0] - rt) / 60),
+        region: f[2],
+      });
+    }
+  }
+
+  const filtered = _relRegFilter === -1 ? rows : rows.filter(r => r.region === _relRegFilter);
+
+  filtered.sort((a, b) => {
+    const va = a[_relSortCol], vb = b[_relSortCol];
+    const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
+    return _relSortAsc ? cmp : -cmp;
+  });
+
+  const countEl = document.getElementById('relTableCount');
+  if (countEl) countEl.textContent = filtered.length.toLocaleString() + ' flight' + (filtered.length !== 1 ? 's' : '');
+
+  let html = '';
+  for (const r of filtered) {
+    const badge = REG_COLORS_BADGE[r.region];
+    const relIso = new Date(r.relTime * 1000).toISOString();
+    const relChi = new Date(r.relTime * 1000).toLocaleString('en-US', {
+      timeZone: 'America/Chicago', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', timeZoneName: 'short'
+    });
+    const depIso = new Date(r.depTime * 1000).toISOString();
+    html += `<tr>
+      <td class="rt-flight">UA ${r.flight}</td>
+      <td>${r.icaoDep}<span class="rt-iata">${r.iataDepHint}</span></td>
+      <td>${r.icaoArr}<span class="rt-iata">${r.iataArrHint}</span></td>
+      <td class="rt-utc">${relIso.slice(0,10)} ${relIso.slice(11,16)}</td>
+      <td class="rt-chi">${relChi}</td>
+      <td class="rt-utc">${depIso.slice(0,10)} ${depIso.slice(11,16)}</td>
+      <td class="rt-mins r">−${r.mins}</td>
+      <td><span class="reg-badge" style="background:${badge.bg};color:${badge.color}">${REG_NAMES[r.region]}</span></td>
+    </tr>`;
+  }
+
+  const tbody = document.getElementById('relTableBody');
+  if (tbody) tbody.innerHTML = html || '<tr><td colspan="8" class="no-data-msg" style="padding:24px">No releases in this window.</td></tr>';
+
+  _updateRelSortUI();
+}
+
+function exportRelTableXLSX() {
+  const tS = getStartUnix(), tE = getEndUnix();
+  const rows = [];
+  for (let i = 0; i < FLIGHTS.length; i++) {
+    const rt = FLIGHT_REL[i];
+    if (rt >= tS && rt < tE) {
+      const f = FLIGHTS[i];
+      rows.push({
+        flight: f[3],
+        icaoDep: IATA_ICAO[f[4]] || f[4],
+        icaoArr: IATA_ICAO[f[5]] || f[5],
+        iataDepHint: f[4],
+        iataArrHint: f[5],
+        relTime: rt,
+        depTime: f[0],
+        mins: Math.round((f[0] - rt) / 60),
+        region: f[2],
+      });
+    }
+  }
+  const filtered = _relRegFilter === -1 ? rows : rows.filter(r => r.region === _relRegFilter);
+  filtered.sort((a, b) => {
+    const va = a[_relSortCol], vb = b[_relSortCol];
+    const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
+    return _relSortAsc ? cmp : -cmp;
+  });
+  const fmtUTC = ts => { const d = new Date(ts * 1000); return d.toISOString().replace('T',' ').slice(0,19) + ' Z'; };
+  const fmtChicago = ts => new Date(ts * 1000).toLocaleString('en-US', {timeZone:'America/Chicago', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+  const header = ['Flight','ICAO Dep','IATA Dep','ICAO Arr','IATA Arr','Release Due (UTC)','Release Due (Chicago)','Sched Dep (UTC)','Min Before Dep','Region'];
+  const data = [header, ...filtered.map(r => [
+    r.flight,
+    r.icaoDep,
+    r.iataDepHint,
+    r.icaoArr,
+    r.iataArrHint,
+    fmtUTC(r.relTime),
+    fmtChicago(r.relTime),
+    fmtUTC(r.depTime),
+    r.mins,
+    REG_NAMES[r.region] || r.region,
+  ])];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [10,10,10,10,10,22,22,22,14,12].map(w => ({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'FP Releases');
+  const startLabel = new Date(tS * 1000).toISOString().slice(0,16).replace('T','_').replace(':','');
+  const endLabel   = new Date(tE * 1000).toISOString().slice(0,16).replace('T','_').replace(':','');
+  const regLabel = _relRegFilter === -1 ? 'All' : REG_NAMES[_relRegFilter] || '';
+  XLSX.writeFile(wb, 'FP_Releases_' + regLabel + '_' + startLabel + '-' + endLabel + '.xlsx');
+}
+
+function _updateRelSortUI() {
+  const ths = document.querySelectorAll('#relDetailTable th');
+  ths.forEach((th, idx) => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (th.dataset.col === _relSortCol) {
+      // find first or last occurrence matching current col
+      const allMatchIdx = [...ths].map((t,i)=>t.dataset.col===_relSortCol?i:-1).filter(i=>i>=0);
+      if (allMatchIdx[0] === idx || allMatchIdx.length === 1) {
+        th.classList.add(_relSortAsc ? 'sort-asc' : 'sort-desc');
+      }
+    }
+  });
+}
+
+// Wire sort clicks — use event delegation on thead
+document.getElementById('relDetailTable').querySelector('thead').addEventListener('click', function(e) {
+  const th = e.target.closest('th');
+  if (!th || !th.dataset.col) return;
+  const col = th.dataset.col;
+  if (_relSortCol === col) {
+    _relSortAsc = !_relSortAsc;
+  } else {
+    _relSortCol = col;
+    _relSortAsc = true;
+  }
+  renderRelTable(getStartUnix(), getEndUnix());
+});
+
+// Wire region filter buttons
+document.getElementById('relFilters').addEventListener('click', function(e) {
+  const btn = e.target.closest('.rfbtn');
+  if (!btn) return;
+  _relRegFilter = parseInt(btn.dataset.reg);
+  document.querySelectorAll('.rfbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRelTable(getStartUnix(), getEndUnix());
+});
+
 // ── Init ─────────────────────────────────────────────────────────
 (function() {
   // Set date picker bounds from data range
@@ -526,60 +815,88 @@ function onInputs() {
   const tS = getStartUnix(), tE = getEndUnix();
   updateDuration(tS, tE);
   updateChicagoTimes(tS, tE);
+  precomputeReleaseTimes();
   render(tS, tE);
 })();
 // ── Flight list modal ─────────────────────────────────────────────
-const REG_NAMES  = ["Domestic","Atlantic","Pacific","SOAM"];
-const REG_COLORS_BADGE = [
-  {bg:"#1e3a6e",color:"#7eb6ff"},  // Domestic
-  {bg:"#3b2200",color:"#fcd34d"},  // Atlantic
-  {bg:"#003b2a",color:"#34d399"},  // Pacific
-  {bg:"#3b0a1a",color:"#fb7185"},  // SOAM
-];
 
 function openFlightList(hourUnix, regionIdx, field) {
   const hourEnd = hourUnix + 3600;
-  const matches = FLIGHTS.filter(f => {
-    const t = field === 'dep' ? f[0] : f[1];
-    return t >= hourUnix && t < hourEnd && f[2] === regionIdx;
-  });
-  matches.sort((a, b) => (field === 'dep' ? a[0] - b[0] : a[1] - b[1]));
-
   const iso  = new Date(hourUnix * 1000).toISOString();
   const iso2 = new Date(hourEnd  * 1000).toISOString();
   const chiStart = new Date(hourUnix*1000).toLocaleString('en-US',{timeZone:'America/Chicago',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
   const chiEnd   = new Date(hourEnd *1000).toLocaleString('en-US',{timeZone:'America/Chicago',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
-
   const reg = REG_NAMES[regionIdx];
   const badge = REG_COLORS_BADGE[regionIdx];
-  const typeLabel = field === 'dep' ? 'Departures' : 'Arrivals';
 
-  document.getElementById("modalTitle").innerHTML =
-    `${typeLabel} &mdash; <span style="font-size:.75rem;background:${badge.bg};color:${badge.color};padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.8px;text-transform:uppercase">${reg}</span>`;
-  document.getElementById("modalSubtitle").textContent =
-    `${iso.slice(0,10)}  ${iso.slice(11,16)}–${iso2.slice(11,16)} UTC  ·  ${chiStart}–${chiEnd.split(' ')[0]} Chicago`;
+  let matches, rows = "", typeLabel;
 
-  let rows = "";
-  for (const f of matches) {
-    const t = field === 'dep' ? f[0] : f[1];
-    const tIso = new Date(t * 1000).toISOString();
-    const tChi = new Date(t * 1000).toLocaleString('en-US', {
-      timeZone: 'America/Chicago',
-      hour: '2-digit', minute: '2-digit', timeZoneName: 'short'
+  if (field === 'rel') {
+    typeLabel = 'FP Releases Due';
+    matches = [];
+    for (let i = 0; i < FLIGHTS.length; i++) {
+      if (FLIGHT_REL[i] >= hourUnix && FLIGHT_REL[i] < hourEnd && FLIGHTS[i][2] === regionIdx)
+        matches.push(i);
+    }
+    matches.sort((a, b) => FLIGHT_REL[a] - FLIGHT_REL[b]);
+    for (const i of matches) {
+      const f = FLIGHTS[i];
+      const relT = FLIGHT_REL[i];
+      const relIso = new Date(relT * 1000).toISOString();
+      const relChi = new Date(relT * 1000).toLocaleString('en-US',{timeZone:'America/Chicago',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
+      const depIso = new Date(f[0] * 1000).toISOString();
+      const minsBefore = Math.round((f[0] - relT) / 60);
+      const icaoDep = IATA_ICAO[f[4]] || f[4];
+      const icaoArr = IATA_ICAO[f[5]] || f[5];
+      const rb = REG_COLORS_BADGE[f[2]];
+      rows += `<tr>
+        <td class="flight-num">UA ${f[3]}</td>
+        <td title="${f[4]}">${icaoDep}</td>
+        <td title="${f[5]}">${icaoArr}</td>
+        <td class="time-utc">${relIso.slice(11,16)} UTC</td>
+        <td class="time-chi">${relChi}</td>
+        <td class="time-utc" title="Sched dep: ${depIso.slice(11,16)} UTC">−${minsBefore} min</td>
+      </tr>`;
+    }
+    document.getElementById("modalTitle").innerHTML =
+      `${typeLabel} &mdash; <span style="font-size:.75rem;background:${badge.bg};color:${badge.color};padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.8px;text-transform:uppercase">${reg}</span>`;
+    document.getElementById("modalSubtitle").textContent =
+      `Release window ${iso.slice(0,10)}  ${iso.slice(11,16)}–${iso2.slice(11,16)} UTC  ·  ${chiStart}–${chiEnd.split(' ')[0]} Chicago`;
+    document.getElementById("modalLastHeader").textContent = "Before Dep";
+  } else {
+    typeLabel = field === 'dep' ? 'Departures' : 'Arrivals';
+    matches = FLIGHTS.filter(f => {
+      const t = field === 'dep' ? f[0] : f[1];
+      return t >= hourUnix && t < hourEnd && f[2] === regionIdx;
     });
-    const rb = REG_COLORS_BADGE[f[2]];
-    rows += `<tr>
-      <td class="flight-num">UA ${f[3]}</td>
-      <td>${f[4]}</td>
-      <td>${f[5]}</td>
-      <td class="time-utc">${tIso.slice(11,16)} UTC</td>
-      <td class="time-chi">${tChi}</td>
-      <td><span class="reg-badge" style="background:${rb.bg};color:${rb.color}">${REG_NAMES[f[2]]}</span></td>
-    </tr>`;
+    matches.sort((a, b) => (field === 'dep' ? a[0] - b[0] : a[1] - b[1]));
+    for (const f of matches) {
+      const t = field === 'dep' ? f[0] : f[1];
+      const tIso = new Date(t * 1000).toISOString();
+      const tChi = new Date(t * 1000).toLocaleString('en-US', {
+        timeZone: 'America/Chicago',
+        hour: '2-digit', minute: '2-digit', timeZoneName: 'short'
+      });
+      const rb = REG_COLORS_BADGE[f[2]];
+      rows += `<tr>
+        <td class="flight-num">UA ${f[3]}</td>
+        <td>${f[4]}</td>
+        <td>${f[5]}</td>
+        <td class="time-utc">${tIso.slice(11,16)} UTC</td>
+        <td class="time-chi">${tChi}</td>
+        <td><span class="reg-badge" style="background:${rb.bg};color:${rb.color}">${REG_NAMES[f[2]]}</span></td>
+      </tr>`;
+    }
+    document.getElementById("modalTitle").innerHTML =
+      `${typeLabel} &mdash; <span style="font-size:.75rem;background:${badge.bg};color:${badge.color};padding:2px 8px;border-radius:4px;font-weight:700;letter-spacing:.8px;text-transform:uppercase">${reg}</span>`;
+    document.getElementById("modalSubtitle").textContent =
+      `${iso.slice(0,10)}  ${iso.slice(11,16)}–${iso2.slice(11,16)} UTC  ·  ${chiStart}–${chiEnd.split(' ')[0]} Chicago`;
+    document.getElementById("modalLastHeader").textContent = "Region";
   }
-  document.getElementById("modalBody").innerHTML = rows || '<tr><td colspan="6" style="color:#3a5070;text-align:center;padding:20px">No flights found.</td></tr>';
-  document.getElementById("modalCount").textContent = matches.length + " flight" + (matches.length !== 1 ? "s" : "");
 
+  const count = matches.length;
+  document.getElementById("modalBody").innerHTML = rows || '<tr><td colspan="6" style="color:#3a5070;text-align:center;padding:20px">No flights found.</td></tr>';
+  document.getElementById("modalCount").textContent = count + " flight" + (count !== 1 ? "s" : "");
   document.getElementById("flightModal").classList.add("open");
 }
 
@@ -617,7 +934,7 @@ document.addEventListener("keydown", function(e) {
             <th>To</th>
             <th>Time (UTC)</th>
             <th>Chicago (CDT)</th>
-            <th>Region</th>
+            <th id="modalLastHeader">Region</th>
           </tr>
         </thead>
         <tbody id="modalBody"></tbody>
