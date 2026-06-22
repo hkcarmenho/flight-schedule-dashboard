@@ -150,11 +150,60 @@
   .rel-table .rt-utc { font-variant-numeric: tabular-nums; color: #c8d8f0; }
   .rel-table .rt-chi { font-variant-numeric: tabular-nums; color: #a78bfa; font-size: 0.82rem; }
   .rel-table .rt-mins { color: #fcd34d; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Password gate */
+  #pwGate { position: fixed; inset: 0; background: #0a0e1a; z-index: 99999; display: flex; align-items: center; justify-content: center; }
+  .pw-box { background: #131929; border: 1px solid #1e2d4a; border-radius: 16px; padding: 40px 44px; width: 340px; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,.6); }
+  .pw-logo { font-size: 2rem; margin-bottom: 12px; }
+  .pw-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
+  .pw-sub { font-size: 0.78rem; color: #5a7fb5; margin-bottom: 28px; }
+  .pw-input { width: 100%; background: #0d1526; border: 1px solid #2a3f66; border-radius: 8px; color: #e2e8f0; padding: 11px 14px; font-size: 1rem; outline: none; text-align: center; letter-spacing: 2px; }
+  .pw-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,.2); }
+  .pw-btn { margin-top: 14px; width: 100%; background: linear-gradient(135deg,#003087,#0052cc); border: none; border-radius: 8px; color: #fff; font-size: 0.95rem; font-weight: 700; padding: 11px; cursor: pointer; transition: opacity .15s; }
+  .pw-btn:hover { opacity: .88; }
+  .pw-error { margin-top: 12px; font-size: 0.78rem; color: #f43f5e; min-height: 18px; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="data.js"></script>
 </head>
 <body>
+<div id="pwGate">
+  <div class="pw-box">
+    <div class="pw-logo">&#9992;</div>
+    <div class="pw-title">UA Flight Operations Dashboard</div>
+    <div class="pw-sub">Enter password to continue</div>
+    <input class="pw-input" id="pwInput" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="pw-btn" id="pwBtn">Unlock</button>
+    <div class="pw-error" id="pwError"></div>
+  </div>
+</div>
+<script>
+(function() {
+  const HASH = '47c38c22d6df51f8e9e09a38a64d08719cedb972cf3f90ec4ce1f4e303261bc6';
+  if (sessionStorage.getItem('ua_auth') === HASH) {
+    document.getElementById('pwGate').style.display = 'none';
+    return;
+  }
+  async function attempt() {
+    const val = document.getElementById('pwInput').value;
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(val));
+    const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+    if (hex === HASH) {
+      sessionStorage.setItem('ua_auth', HASH);
+      document.getElementById('pwGate').style.display = 'none';
+    } else {
+      const err = document.getElementById('pwError');
+      err.textContent = 'Incorrect password.';
+      document.getElementById('pwInput').value = '';
+      document.getElementById('pwInput').focus();
+      setTimeout(() => { err.textContent = ''; }, 2500);
+    }
+  }
+  document.getElementById('pwBtn').addEventListener('click', attempt);
+  document.getElementById('pwInput').addEventListener('keydown', e => { if (e.key === 'Enter') attempt(); });
+})();
+</script>
+
 <header>
   <h1>&#9992; UA Flight Operations Dashboard</h1>
   <span id="headerRange">All times UTC</span>
