@@ -113,6 +113,12 @@
   .time-chi { color: #86efac; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
   .reg-badge { font-size: 0.65rem; font-weight: 700; letter-spacing: .8px; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; }
   .modal-count { font-size: 0.78rem; color: #5a7fb5; margin-top: 12px; text-align: right; }
+
+  /* Loading overlay */
+  #loadingOverlay { position: fixed; inset: 0; background: #0a0e1a; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
+  .spinner { width: 44px; height: 44px; border: 3px solid #1e2d4a; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 0.85rem; color: #5a7fb5; letter-spacing: 1.5px; text-transform: uppercase; }
   @media(max-width:680px){
     .time-rows { grid-template-columns: 1fr; }
     .metrics { grid-template-columns: 1fr; }
@@ -164,7 +170,7 @@
   .pw-error { margin-top: 12px; font-size: 0.78rem; color: #f43f5e; min-height: 18px; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="data.js"></script>
+<script src="data.js" defer></script>
 </head>
 <body>
 <div id="pwGate">
@@ -204,6 +210,7 @@
 })();
 </script>
 
+<div id="loadingOverlay"><div class="spinner"></div><div class="loading-text">Loading flight data…</div></div>
 <header>
   <h1>&#9992; UA Flight Operations Dashboard</h1>
   <span id="headerRange">All times UTC</span>
@@ -348,7 +355,8 @@
 
 </div>
 
-<script>
+<script defer>
+(document.getElementById("loadingOverlay")||{style:{}}).style.display="none";
 // ── Hourly chart ─────────────────────────────────────────────────
 
 const IATA_ICAO = {"ABQ":"KABQ","ACC":"DGAA","AGP":"LEMG","AKL":"NZAA","ALB":"KALB","AMS":"EHAM","ANC":"PANC","ATH":"LGAV","ATL":"KATL","ATW":"KATW","AUA":"TNCA","AUS":"KAUS","AVL":"KAVL","BCN":"LEBL","BDA":"TXKF","BDL":"KBDL","BER":"EDDB","BFL":"KBFL","BHM":"KBHM","BIL":"KBIL","BIO":"LEBB","BJX":"MMLO","BKK":"VTBS","BNA":"KBNA","BNE":"YBBN","BOG":"SKBO","BOI":"KBOI","BOS":"KBOS","BQN":"TJBQ","BRI":"LIBD","BRU":"EBBR","BTV":"KBTV","BUF":"KBUF","BUR":"KBUR","BWI":"KBWI","BZE":"MZBZ","BZN":"KBZN","CDG":"LFPG","CEB":"RPVM","CHS":"KCHS","CID":"KCID","CLE":"KCLE","CLT":"KCLT","CMH":"KCMH","COS":"KCOS","CPT":"FACT","CUN":"MMUN","CVG":"KCVG","CZM":"MMCZ","DAY":"KDAY","DBV":"LDDU","DCA":"KDCA","DEL":"VIDP","DEN":"KDEN","DFW":"KDFW","DRO":"KDRO","DSM":"KDSM","DTW":"KDTW","DUB":"EIDW","EDI":"EGPH","EGE":"KEGE","ELP":"KELP","EUG":"KEUG","EWR":"KEWR","EYW":"KEYW","EZE":"SAEZ","FAI":"PAFA","FAO":"LPFR","FAR":"KFAR","FAT":"KFAT","FCA":"KGPI","FCO":"LIRF","FLL":"KFLL","FNC":"LPMA","FRA":"EDDF","FSD":"KFSD","GCM":"MWCR","GDL":"MMGL","GEG":"KGEG","GEO":"SYCJ","GIG":"SBGL","GJT":"KGJT","GLA":"EGPF","GOH":"BGGH","GRR":"KGRR","GRU":"SBGR","GSP":"KGSP","GTF":"KGTF","GUA":"MGGT","GUM":"PGUM","GVA":"LSGG","HDN":"KHDN","HKG":"VHHH","HND":"RJTT","HNL":"PHNL","IAD":"KIAD","IAH":"KIAH","ICN":"RKSI","ICT":"KICT","IDA":"KIDA","IND":"KIND","JAC":"KJAC","JAX":"KJAX","JNB":"FAOR","KEF":"BIKF","KHH":"RCKH","KIX":"RJBB","KOA":"PHKO","KSA":"PTSA","KWA":"PKWA","LAS":"KLAS","LAX":"KLAX","LEX":"KLEX","LGA":"KLGA","LGB":"KLGB","LHR":"EGLL","LIH":"PHLI","LIM":"SPIM","LIR":"MRLB","LIS":"LPPT","LIT":"KLIT","LOS":"DNMM","MAD":"LEMD","MAF":"KMAF","MAJ":"PKMJ","MBJ":"MKJS","MCI":"KMCI","MCO":"KMCO","MDE":"SKRG","MDT":"KMDT","MDW":"KMDW","MEL":"YMML","MEM":"KMEM","MEX":"MMMX","MFE":"KMFE","MFR":"KMFR","MGA":"MNMG","MIA":"KMIA","MID":"MMMD","MKC":"KMKC","MKE":"KMKE","MNL":"RPLL","MRY":"KMRY","MSN":"KMSN","MSO":"KMSO","MSP":"KMSP","MSY":"KMSY","MTJ":"KMTJ","MTY":"MMMY","MUC":"EDDM","MXP":"LIMC","MYR":"KMYR","NAP":"LIRN","NAS":"MYNN","NCE":"LFMN","NGO":"RJGG","NRT":"RJAA","OGG":"PHOG","OKC":"KOKC","OMA":"KOMA","ONT":"KONT","OPO":"LPPR","ORD":"KORD","ORF":"KORF","PBI":"KPBI","PDL":"LPPD","PDX":"KPDX","PEK":"ZBAA","PHL":"KPHL","PHX":"KPHX","PIT":"KPIT","PLS":"MBPV","PMI":"LEPA","PMO":"LICJ","PNI":"PTPN","PNS":"KPNS","POS":"TTPP","PPT":"NTAA","PSC":"KPSC","PSP":"KPSP","PTY":"MPTO","PUJ":"MDPC","PVG":"ZSPD","PVR":"MMPR","PWM":"KPWM","QRO":"MMQT","RAP":"KRAP","RDM":"KRDM","RDU":"KRDU","RIC":"KRIC","RNO":"KRNO","ROC":"KROC","ROR":"PTRO","RSW":"KRSW","RTB":"MHRO","SAL":"MSLP","SAN":"KSAN","SAP":"MHLM","SAT":"KSAT","SAV":"KSAV","SBA":"KSBA","SBP":"KSBP","SCQ":"LEST","SDF":"KSDF","SDQ":"MDSD","SEA":"KSEA","SFO":"KSFO","SGN":"VVTS","SIN":"WSSS","SJC":"KSJC","SJD":"MMSD","SJO":"MROC","SJU":"TJSJ","SLC":"KSLC","SLP":"MMSP","SMF":"KSMF","SNA":"KSNA","SNN":"EINN","SPN":"PGSN","SPU":"LDSP","SRQ":"KSRQ","STI":"MDST","STL":"KSTL","STT":"TIST","SXM":"TNCM","SYD":"YSSY","SYR":"KSYR","TKK":"PTKK","TPA":"KTPA","TPE":"RCTP","TQO":"MMTL","TUL":"KTUL","TUS":"KTUS","TVC":"KTVC","TYS":"KTYS","UBN":"ZMCK","UIO":"SEQM","VCE":"LIPZ","VER":"MMVR","XNA":"KXNA","XPL":"MHSC","YAP":"PTYA","YEG":"CYEG","YOW":"CYOW","YUL":"CYUL","YVR":"CYVR","YYC":"CYYC","YYZ":"CYYZ","ZRH":"LSZH"};
@@ -389,14 +397,16 @@ function precomputeReleaseTimes() {
 function buildHourlyReleaseData(tS, tE) {
   const hourS = Math.floor(tS / 3600) * 3600;
   const hourE = Math.floor(tE / 3600) * 3600;
+  const totalHours = (hourE - hourS) / 3600 + 1;
+  const step = totalHours <= 48 ? 3600 : 86400;
   const buckets = [];
-  for (let h = hourS; h <= hourE; h += 3600)
-    buckets.push({ t: h, rel: [0,0,0,0] });
+  for (let t = hourS; t <= hourE; t += step)
+    buckets.push({ t, rel: [0,0,0,0] });
   if (FLIGHT_REL.length === 0 || buckets.length === 0) return buckets;
   for (let i = 0; i < FLIGHTS.length; i++) {
     const rt = FLIGHT_REL[i];
-    const rh = Math.floor(rt / 3600) * 3600;
-    const idx = (rh - hourS) / 3600;
+    const rb = Math.floor(rt / step) * step;
+    const idx = (rb - hourS) / step;
     if (idx >= 0 && idx < buckets.length) buckets[idx].rel[FLIGHTS[i][2]]++;
   }
   return buckets;
@@ -410,18 +420,20 @@ const REG_COLORS_BADGE = [{bg:"#1e3a6e",color:"#7eb6ff"},{bg:"#3b2200",color:"#f
 function buildHourlyData(tS, tE) {
   const hourS = Math.floor(tS / 3600) * 3600;
   const hourE = Math.floor(tE / 3600) * 3600;
+  const totalHours = (hourE - hourS) / 3600 + 1;
+  // Aggregate when window > 2 days to keep bar count ≤ ~168
+  const step = totalHours <= 48 ? 3600 :
+               totalHours <= 336 ? 86400 :   // ≤14 days → daily
+               totalHours <= 2016 ? 86400*7 : // ≤84 days → weekly? keep daily
+               86400;  // default daily
   const buckets = [];
-  for (let h = hourS; h <= hourE; h += 3600) {
-    buckets.push({ t: h, dep: [0,0,0,0], arr: [0,0,0,0] });
-  }
-  if (buckets.length === 0) return buckets;
-  for (const f of FLIGHTS) {
-    const dH = Math.floor(f[0] / 3600) * 3600;
-    const aH = Math.floor(f[1] / 3600) * 3600;
-    const di = (dH - hourS) / 3600;
-    const ai = (aH - hourS) / 3600;
-    if (di >= 0 && di < buckets.length) buckets[di].dep[f[2]]++;
-    if (ai >= 0 && ai < buckets.length) buckets[ai].arr[f[2]]++;
+  for (let t = hourS; t <= hourE; t += step) {
+    const d = [0,0,0,0], a = [0,0,0,0];
+    for (let h = t; h < t + step && h <= hourE; h += 3600) {
+      const dh = DEP_BUCKETS[h]; if (dh) { d[0]+=dh[0]; d[1]+=dh[1]; d[2]+=dh[2]; d[3]+=dh[3]; }
+      const ah = ARR_BUCKETS[h]; if (ah) { a[0]+=ah[0]; a[1]+=ah[1]; a[2]+=ah[2]; a[3]+=ah[3]; }
+    }
+    buckets.push({ t, dep: d, arr: a });
   }
   return buckets;
 }
@@ -532,37 +544,26 @@ const REGIONS = [
   { name:"SOAM",     dot:"#fb7185", bar:"#f43f5e" },
 ];
 
-// Data range computed dynamically from FLIGHTS
-const DATA_START = FLIGHTS.reduce((m, f) => Math.min(m, f[0]), Infinity);
-const DATA_END   = FLIGHTS.reduce((m, f) => Math.max(m, f[1]), -Infinity);
-const DATA_START_DATE = new Date(DATA_START * 1000).toISOString().slice(0, 10);
-const DATA_END_DATE   = new Date(DATA_END   * 1000).toISOString().slice(0, 10);
+// Data range from pre-computed constants in data.js
+var DATA_START = 0, DATA_END = 0, DATA_START_DATE = '', DATA_END_DATE = '';
 
 // ── Stats calculation ─────────────────────────────────────────────
 function calcStats(tS, tE) {
   if (tS >= tE) return null;
 
-  // Departing & Landing: simple window counts per region
-  const dep = REGIONS.map(()=>0);
-  const land = REGIONS.map(()=>0);
-  for (const f of FLIGHTS) {
-    if (f[0] >= tS && f[0] <= tE) dep[f[2]]++;
-    if (f[1] >= tS && f[1] <= tE) land[f[2]]++;
-  }
+  const hourS = Math.floor(tS / 3600) * 3600;
+  const hourE = Math.floor(tE / 3600) * 3600;
+  const dep   = [0,0,0,0];
+  const land  = [0,0,0,0];
+  const peakA = [0,0,0,0];
 
-  // Peak airborne: sample every 10 min across window, find max per region
-  const peakA = REGIONS.map(()=>0);
-  const stepSec = 600; // 10 minutes
-  const steps = Math.max(2, Math.ceil((tE - tS) / stepSec));
-  for (let i = 0; i <= steps; i++) {
-    const t = tS + (tE - tS) * i / steps;
-    const cur = REGIONS.map(()=>0);
-    for (const f of FLIGHTS) {
-      if (f[0] <= t && t <= f[1]) cur[f[2]]++;
-    }
-    for (let r = 0; r < REGIONS.length; r++) {
-      if (cur[r] > peakA[r]) peakA[r] = cur[r];
-    }
+  for (let h = hourS; h <= hourE; h += 3600) {
+    const d = DEP_BUCKETS[h];
+    if (d) { dep[0]+=d[0]; dep[1]+=d[1]; dep[2]+=d[2]; dep[3]+=d[3]; }
+    const a = ARR_BUCKETS[h];
+    if (a) { land[0]+=a[0]; land[1]+=a[1]; land[2]+=a[2]; land[3]+=a[3]; }
+    const c = AIRBORNE_BY_HOUR[h];
+    if (c) { for (let r=0;r<4;r++) if (c[r]>peakA[r]) peakA[r]=c[r]; }
   }
 
   return { dep, land, peakA };
@@ -690,6 +691,7 @@ let _relSortCol = 'relTime';
 let _relSortAsc = true;
 let _relRegFilter = -1;
 
+const REL_TABLE_MAX = 500;
 function renderRelTable(tS, tE) {
   if (!FLIGHT_REL.length) return;
   const rows = [];
@@ -712,6 +714,7 @@ function renderRelTable(tS, tE) {
   }
 
   const filtered = _relRegFilter === -1 ? rows : rows.filter(r => r.region === _relRegFilter);
+  const total = filtered.length;
 
   filtered.sort((a, b) => {
     const va = a[_relSortCol], vb = b[_relSortCol];
@@ -719,11 +722,16 @@ function renderRelTable(tS, tE) {
     return _relSortAsc ? cmp : -cmp;
   });
 
+  const display = filtered.slice(0, REL_TABLE_MAX);
+
   const countEl = document.getElementById('relTableCount');
-  if (countEl) countEl.textContent = filtered.length.toLocaleString() + ' flight' + (filtered.length !== 1 ? 's' : '');
+  if (countEl) {
+    const suffix = total > REL_TABLE_MAX ? ` (showing ${REL_TABLE_MAX.toLocaleString()} of ${total.toLocaleString()})` : '';
+    countEl.textContent = total.toLocaleString() + ' flight' + (total !== 1 ? 's' : '') + suffix;
+  }
 
   let html = '';
-  for (const r of filtered) {
+  for (const r of display) {
     const badge = REG_COLORS_BADGE[r.region];
     const relIso = new Date(r.relTime * 1000).toISOString();
     const relChi = new Date(r.relTime * 1000).toLocaleString('en-US', {
@@ -838,8 +846,14 @@ document.getElementById('relFilters').addEventListener('click', function(e) {
   renderRelTable(getStartUnix(), getEndUnix());
 });
 
-// ── Init ─────────────────────────────────────────────────────────
-(function() {
+// ── Init (runs after data.js deferred script executes) ───────────
+window.addEventListener('load', function() {
+  // Populate DATA_START/END now that data.js has loaded
+  DATA_START = DATA_MIN_TS;
+  DATA_END   = DATA_MAX_TS;
+  DATA_START_DATE = new Date(DATA_MIN_TS * 1000).toISOString().slice(0, 10);
+  DATA_END_DATE   = new Date(DATA_MAX_TS * 1000).toISOString().slice(0, 10);
+
   // Set date picker bounds from data range
   ["startDate","endDate"].forEach(id => {
     const el = document.getElementById(id);
@@ -866,7 +880,7 @@ document.getElementById('relFilters').addEventListener('click', function(e) {
   updateChicagoTimes(tS, tE);
   precomputeReleaseTimes();
   render(tS, tE);
-})();
+});
 // ── Flight list modal ─────────────────────────────────────────────
 
 function openFlightList(hourUnix, regionIdx, field) {
